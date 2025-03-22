@@ -31,7 +31,7 @@ This demo deploys a **highly available** and **secure** environment to test **AL
     - Instance type (`t2.micro`)  
     - Security settings  
     - User data script (installs Apache and serves a simple webpage)  
-  - Scales between **3 (desired)** and **6 (max)** instances based on demand.  
+  - Scales between **2 (desired)** and **2 (max)** instances based on demand. You can edit these parameters before launch.  
 
 #### **Security**  
 - **Security Groups (SGs) enforce access control:**  
@@ -61,7 +61,8 @@ Once the infrastructure is deployed, we can test **Application Load Balancer (AL
 
 #### **🛠️ Step 1: Deploy the CloudFormation Template**  
 1. Navigate to the **CloudFormation** section in the AWS Console.  
-2. Upload the CloudFormation template from the `cloudformation` directory.  
+2. Upload the CloudFormation template from the `cloudformation` directory. 
+    - The `alb-sticky-session-secure.yaml` incurs charges on free tier because of NAT gateway. To prevent this, use the `alb-sticky-session.yaml` to follow up with the tutorial but it comes at the cost of less security because instance are hosted in the public subnet.
 3. Click **Create Stack** and follow the on-screen instructions.  
 4. Wait for the stack creation to complete (**status: CREATE_COMPLETE**).  
 

@@ -7,7 +7,7 @@ Parameters:
   WebAsgMax:
     AllowedPattern: ^([0-0]?[0-9]|10)$
     ConstraintDescription: Must be a number between 1 and 30.
-    Default: 10
+    Default: 2
     Description: Specifies the maximum number of EC2 instances in the Web Autoscaling Group.
     Type: String
   WebAsgMin:
@@ -19,7 +19,7 @@ Parameters:
   WebAsgDesired:
     AllowedPattern: ^([0-0]?[0-9]|10)$
     ConstraintDescription: Must be a number between 0 and 10.
-    Default: 6
+    Default: 2
     Description: Specifies the Desired of EC2 instances in the Web Autoscaling Group.
     Type: String    
 Resources:
@@ -37,41 +37,12 @@ Resources:
     Properties:
       Tags:
       - Key: Name
-        Value: vpc1-igw   
+        Value: vpc1-igw
   InternetGatewayAttachment:
     Type: 'AWS::EC2::VPCGatewayAttachment'
     Properties:
-      VpcId: VPC
-      InternetGatewayId: InternetGateway
-  
-  NATGatewayEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-        Domain: VPC
-        DependsOn: InternetGatewayAttachment
-  NATGateway:
-   Type: AWS::EC2::NatGateway
-   Properties:
-      AllocationId: !GetAtt NATGatewayEIP.AllocationId
-      SubnetId: SubnetPUBLICA
-  
-  RouteTablePrivate: 
-    Type: 'AWS::EC2::RouteTable'
-    Properties:
       VpcId: !Ref VPC
-      Tags:
-      - Key: Name
-        Value: vpc1-rt-private
-  RouteTableNatRoute:
-    Type: 'AWS::EC2::Route'
-    DependsOn: {Nat}
-    Properties:
-      RouteTableId:
-        Ref: RouteTablePrivate
-      DestinationCidrBlock: '0.0.0.0/0'
-      GatewayId:
-        Ref: InternetGateway
-
+      InternetGatewayId: !Ref InternetGateway
   RouteTableWeb: 
     Type: 'AWS::EC2::RouteTable'
     Properties:
@@ -88,7 +59,7 @@ Resources:
       DestinationCidrBlock: '0.0.0.0/0'
       GatewayId:
         Ref: InternetGateway
-  SubnetPUBLICA:
+  SubnetPublicA:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
@@ -98,7 +69,7 @@ Resources:
       Tags:
         - Key: Name
           Value: sn-public-A
-  SubnetPUBLICB:
+  SubnetPublicB:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
@@ -108,52 +79,19 @@ Resources:
       Tags:
         - Key: Name
           Value: sn-public-B
-
-  SubnetPrivateA:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs '' ]
-      CidrBlock: 10.16.96.0/20
-      Tags:
-        - Key: Name
-          Value: sn-private-A
-
-  SubnetPrivateB:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 1, !GetAZs '' ]
-      CidrBlock: 10.16.176.0/20
-      Tags:
-        - Key: Name
-          Value: sn-private-B
-
   RouteTableAssociationPublicA:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
-      SubnetId: !Ref SubnetPUBLICA
+      SubnetId: !Ref SubnetPublicA
       RouteTableId:
         Ref: RouteTableWeb
   RouteTableAssociationPublicB:
     Type: 'AWS::EC2::SubnetRouteTableAssociation'
     Properties:
-      SubnetId: !Ref SubnetPUBLICB
+      SubnetId: !Ref SubnetPublicB
       RouteTableId:
         Ref: RouteTableWeb
-  RouteTableAssociationPrivateA:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      SubnetId: !Ref SubnetPrivateA
-      RouteTableId:
-        Ref: RouteTableWeb
-  RouteTableAssociationPrivateB:
-    Type: 'AWS::EC2::SubnetRouteTableAssociation'
-    Properties:
-      SubnetId: !Ref SubnetPrivateB
-      RouteTableId:
-        Ref: RouteTableWeb
-
+  
   SGWEB:
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
@@ -233,7 +171,7 @@ Resources:
             # STEP 2 - Custom Random Web Page
             bgcolor=$(printf "%02x%02x%02x\n" $((RANDOM%256)) $((RANDOM%256)) $((RANDOM%256)))
             TOKEN=$(curl -sX PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
-            instanceId=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/instance-id")
+            instanceId=$(curl -sH "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/instance-id") 
             wget -O /var/www/html/cat.gif "http://thecatapi.com/api/images/get?format=src&type=gif&api_key=8f7dc437-0b9b-47b8-a2c0-65925d593acf"
             echo "<html><head></head><body style=\"background-color:#$bgcolor;\">" >> /var/www/html/index.html
             echo "<center><h1>Instance ID : $instanceId</h1></center><br>" >> /var/www/html/index.html
@@ -257,9 +195,8 @@ Resources:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties: 
       VPCZoneIdentifier:
-        - !Ref SubnetPUBLICA
-        - !Ref SubnetPUBLICB
-        - !Ref SubnetPUBLICC
+        - !Ref SubnetPublicA
+        - !Ref SubnetPublicB
       LaunchTemplate:
         LaunchTemplateId: !Ref WEBLaunchTemplate
         Version: "1"
@@ -282,9 +219,8 @@ Resources:
       SecurityGroups: 
         - !Ref SGLoadBalancer
       Subnets: 
-        - !Ref SubnetPUBLICA
-        - !Ref SubnetPUBLICB
-        - !Ref SubnetPUBLICC
+        - !Ref SubnetPublicA
+        - !Ref SubnetPublicB
       Tags: 
         - Key: Name
           Value: !Join [ '', [ 'ALB-', !Ref 'AWS::StackName' ] ]
