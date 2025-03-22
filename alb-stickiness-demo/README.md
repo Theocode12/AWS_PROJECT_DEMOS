@@ -12,7 +12,7 @@ This is a **zero-code, GUI-based deployment**, making it accessible for anyone l
 
 This demo deploys a **highly available** and **secure** environment to test **ALB session stickiness**. The infrastructure is built within a **custom VPC** spanning **two Availability Zones (AZs)** for fault tolerance.  
 
-![Architecture Diagram](media/alb-stickiness-architecture.png)
+![Architecture Diagram](media/alb-stickiness-architecure.png)
 
 #### **Network Setup**  
 - **VPC:** A custom **VPC** is created to provide an isolated networking environment.  
